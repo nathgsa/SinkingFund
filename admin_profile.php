@@ -1,62 +1,30 @@
 <?php
-session_start();
 require_once 'db_connection.php';
+session_start();
 
-// Check if user is logged in and is an admin
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'admin') {
+if ($_SESSION['role'] !== 'admin') {
     header("Location: login.php");
     exit();
 }
 
 $user_id = $_SESSION['user_id'];
 
-// Fetch admin details
-$stmt = $pdo->prepare("SELECT * FROM users WHERE user_id = ? AND role = 'admin'");
-$stmt->execute([$user_id]);
-$admin = $stmt->fetch();
+try {
+    $query = $pdo->prepare("SELECT * FROM admin WHERE user_id = :user_id");
+    $query->bindParam(':user_id', $user_id, PDO::PARAM_INT);
+    $query->execute();
+    $admin = $query->fetch(PDO::FETCH_ASSOC);
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $firstname = $_POST['firstname'];
-    $lastname = $_POST['lastname'];
-    $email = $_POST['email'];
-    $new_password = $_POST['new_password'];
-    $confirm_password = $_POST['confirm_password'];
-
-    if ($new_password !== $confirm_password) {
-        $error = "New passwords do not match";
-    } else {
-        // Start transaction
-        $pdo->beginTransaction();
-
-        try {
-            // Update admin information
-            $stmt = $pdo->prepare("UPDATE users SET email = ? WHERE user_id = ?");
-            $stmt->execute([$email, $user_id]);
-
-            // Update password if provided
-            if (!empty($new_password)) {
-                $hashed_password = password_hash($new_password, PASSWORD_DEFAULT);
-                $stmt = $pdo->prepare("UPDATE users SET password = ? WHERE user_id = ?");
-                $stmt->execute([$hashed_password, $user_id]);
-            }
-
-            // Commit transaction
-            $pdo->commit();
-
-            $success = "Profile updated successfully";
-            
-            // Refresh admin details
-            $stmt = $pdo->prepare("SELECT * FROM users WHERE user_id = ? AND role = 'admin'");
-            $stmt->execute([$user_id]);
-            $admin = $stmt->fetch();
-        } catch (Exception $e) {
-            // Rollback transaction on error
-            $pdo->rollBack();
-            $error = "An error occurred. Please try again.";
-        }
+    if (!$admin) {
+        echo "Admin not found!";
+        exit();
     }
+} catch (PDOException $e) {
+    echo 'Query failed: ' . $e->getMessage();
+    exit();
 }
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -134,11 +102,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             margin-right: 10px;
         }
 
-        .profile-form {
+        .profile-container {
             background-color: #ffffff;
             border-radius: 10px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             padding: 20px;
+        }
+
+        .profile-info {
+            margin-bottom: 20px;
+        }
+
+        .profile-info h2 {
+            margin-bottom: 15px;
+        }
+
+        .profile-info p {
+            margin: 5px 0;
+        }
+
+        .btn-container {
+            text-align: center;
         }
 
         .brandname {
@@ -148,7 +132,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             display: flex;
             justify-content: space-between;
             align-items: center;
-
         }
     </style>
 </head>
@@ -166,40 +149,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <a href="admin_history.php">
             <i class="fas fa-history"></i> History
         </a>
-        <a href="admin_contribution_tracker.php">
-            <i class="fas fa-chart-line"></i> Contribution Tracker
-        </a>
-        <a href="logout.php" class="btn button" id="logout">
+        <a href="login.php" class="btn button" id="logout">
             <i class="fas fa-sign-out-alt"></i> Logout
         </a>
     </div>
 
     <div class="container">
         <h1 class="mb-4">Admin Profile</h1>
-        <?php
-        if (isset($error)) {
-            echo "<p class='text-danger'>$error</p>";
-        }
-        if (isset($success)) {
-            echo "<p class='text-success'>$success</p>";
-        }
-        ?>
-        <div class="profile-form">
-            <form action="admin_profile.php" method="post">
-                <div class="mb-3">
-                    <label for="email" class="form-label">Email address</label>
-                    <input type="email" class="form-control" id="email" name="email" value="<?php echo htmlspecialchars($admin['email']); ?>" required>
-                </div>
-                <div class="mb-3">
-                    <label for="new_password" class="form-label">New Password (leave blank to keep current password)</label>
-                    <input type="password" class="form-control" id="new_password" name="new_password">
-                </div>
-                <div class="mb-3">
-                    <label for="confirm_password" class="form-label">Confirm New Password</label>
-                    <input type="password" class="form-control" id="confirm_password" name="confirm_password">
-                </div>
-                <button type="submit" class="btn btn-primary">Update Profile</button>
-            </form>
+        <div class="profile-container">
+            <div class="profile-info">
+                <h2>Personal Information</h2>
+                <p><strong>First Name:</strong> <?php echo htmlspecialchars($admin['firstname']); ?></p>
+                <p><strong>Last Name:</strong> <?php echo htmlspecialchars($admin['lastname']); ?></p>
+                <p><strong>Email:</strong> <?php echo htmlspecialchars($admin['email']); ?></p>
+                <p><strong>Phone:</strong> <?php echo htmlspecialchars($admin['contact_number']); ?></p>
+                <p><strong>Address:</strong> <?php echo nl2br(htmlspecialchars($admin['address'])); ?></p>
+            </div>
+            <div class="btn-container">
+                <a href="admin_update_info.php" class="btn" id="update-profile">Update Profile</a>
+            </div>
         </div>
     </div>
 

@@ -20,23 +20,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['contribution'])) {
         $amount = $_POST['amount'];
         $gcash_number = $_POST['gcash_number'];
-        
+
         $stmt = $pdo->prepare("CALL SaveContribution(?, ?, ?, ?, ?, ?)");
         $stmt->execute([$member['member_id'], $member['firstname'], $member['lastname'], date('Y-m-d'), $gcash_number, $amount]);
     } elseif (isset($_POST['loan_application'])) {
         $amount = $_POST['amount'];
         $gcash_number = $_POST['gcash_number'];
-        
-        $stmt = $pdo->prepare("INSERT INTO loan_applications (member_id, amount, gcash_number, date) VALUES (?, ?, ?, ?)");
+
+        $stmt = $pdo->prepare("INSERT INTO loan_application (member_id, amount, gcash_number, date) VALUES (?, ?, ?, ?)");
         $stmt->execute([$member['member_id'], $amount, $gcash_number, date('Y-m-d')]);
     } elseif (isset($_POST['loan_payment'])) {
+        $loan_id = $_POST['loan_id']; // Ensure this is provided in your form
         $amount = $_POST['amount'];
         $gcash_number = $_POST['gcash_number'];
-        
-        $stmt = $pdo->prepare("INSERT INTO loan_payed (member_id, amount, gcash_number, date) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$member['member_id'], $amount, $gcash_number, date('Y-m-d')]);
+
+        // Call the stored procedure
+        $stmt = $pdo->prepare("CALL saveLoanPaid(?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$loan_id, $member['firstname'], $member['lastname'], date('Y-m-d'), $gcash_number, $amount]);
     }
-    
+
     header("Location: member_dash.php");
     exit();
 }
@@ -51,7 +53,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <title>Member Dashboard</title>
     <style>
-        /* Your styles here */
         body {
             font-family: Arial, sans-serif;
             margin: 0;
@@ -148,10 +149,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     </style>
 </head>
 <body>
+
     <div class="sidebar">
-        <a class="navbar-brand brandname" href="member_dash.php">
-            <img src="images/logo.png" alt="" width="35" height="35"> Sinking Fund
-        </a>
         <a href="member_dash.php">
             <i class="fas fa-tachometer-alt"></i> Dashboard
         </a>
@@ -164,7 +163,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         <a href="member_contribution_tracker.php">
             <i class="fas fa-chart-line"></i> Contribution Tracker
         </a>
-        <a href="logout.php" class="btn button" id="logout">
+        <a href="login.php" class="btn button" id="logout">
             <i class="fas fa-sign-out-alt"></i> Logout
         </a>
     </div>
@@ -198,10 +197,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         const dynamicContent = document.getElementById('dynamic-content');
 
         document.getElementById('btn-contribution').addEventListener('click', () => {
-            dynamicContent.innerHTML = `
+            dynamicContent.innerHTML = ` 
                 <h3>Contribution</h3>
                 <form action="member_dash.php" method="post">
                     <input type="hidden" name="contribution" value="1">
+                    <div class="mb-3">
+                        <label for="contribution-name" class="form-label">Name</label>
+                        <input type="text" class="form-control" id="contribution-name" value="${'<?php echo $member['firstname'].' '.$member['lastname']; ?>'}" readonly required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="contribution-date" class="form-label">Date</label>
+                        <input type="text" class="form-control" id="contribution-date" value="${new Date().toLocaleString()}" readonly>
+                    </div>
                     <div class="mb-3">
                         <label for="contribution-gcash" class="form-label">G-Cash Number</label>
                         <input type="text" class="form-control" id="contribution-gcash" name="gcash_number" required>
@@ -221,12 +228,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <form action="member_dash.php" method="post">
                     <input type="hidden" name="loan_application" value="1">
                     <div class="mb-3">
+                        <label for="loan-application-name" class="form-label">Name</label>
+                        <input type="text" class="form-control" value="${'<?php echo $member['firstname'].' '.$member['lastname']; ?>'}" readonly required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="loan-application-date" class="form-label">Date</label>
+                        <input type="text" class="form-control" value="${new Date().toLocaleString()}" readonly>
+                    </div>
+                    <div class="mb-3">
                         <label for="loan-application-gcash" class="form-label">G-Cash Number</label>
-                        <input type="text" class="form-control" id="loan-application-gcash" name="gcash_number" required>
+                        <input type="text" class="form-control" name="gcash_number" required>
                     </div>
                     <div class="mb-3">
                         <label for="loan-application-amount" class="form-label">Amount</label>
-                        <input type="number" class="form-control" id="loan-application-amount" name="amount" required>
+                        <input type="number" class="form-control" name="amount" required>
                     </div>
                     <button type="submit" class="btn button">Apply</button>
                 </form>
@@ -239,12 +254,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <form action="member_dash.php" method="post">
                     <input type="hidden" name="loan_payment" value="1">
                     <div class="mb-3">
+                        <label for="loan-payment-name" class="form-label">Loan ID</label>
+                        <input type="text" class="form-control" value="${'<?php echo $loan['loan_id']; ?>'}" readonly required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="loan-payment-name" class="form-label">Name</label>
+                        <input type="text" class="form-control" value="${'<?php echo $member['firstname'].' '.$member['lastname']; ?>'}" readonly required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="loan-payment-date" class="form-label">Date</label>
+                        <input type="text" class="form-control" value="${new Date().toLocaleString()}" readonly>
+                    </div>
+                    <div class="mb-3">
                         <label for="loan-payment-gcash" class="form-label">G-Cash Number</label>
-                        <input type="text" class="form-control" id="loan-payment-gcash" name="gcash_number" required>
+                        <input type="text" class="form-control" name="gcash_number" required>
                     </div>
                     <div class="mb-3">
                         <label for="loan-payment-amount" class="form-label">Amount</label>
-                        <input type="number" class="form-control" id="loan-payment-amount" name="amount" required>
+                        <input type="number" class="form-control" name="amount" required>
                     </div>
                     <button type="submit" class="btn button">Pay</button>
                 </form>

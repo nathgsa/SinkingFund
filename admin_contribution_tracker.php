@@ -2,41 +2,34 @@
 session_start();
 require_once 'db_connection.php';
 
-// Check if user is logged in and is an admin
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'member') {
     header("Location: login.php");
     exit();
 }
 
 $user_id = $_SESSION['user_id'];
 
-// Fetch member details
 $stmt = $pdo->prepare("SELECT * FROM member WHERE user_id = ?");
 $stmt->execute([$user_id]);
 $member = $stmt->fetch();
 
-// Fetch contribution total
-$stmt = $pdo->prepare("SELECT SUM(amount) AS total_contribution FROM contributions WHERE member_id = ?");
+$stmt = $pdo->prepare("SELECT SUM(amount) AS total_contribution FROM contribution WHERE member_id = ?");
 $stmt->execute([$member['member_id']]);
 $contribution = $stmt->fetch();
 
-// Fetch loan total
-$stmt = $pdo->prepare("SELECT SUM(amount) AS total_loan FROM loans WHERE member_id = ?");
+$stmt = $pdo->prepare("SELECT SUM(amount) AS total_loan FROM loan WHERE member_id = ?");
 $stmt->execute([$member['member_id']]);
 $loan = $stmt->fetch();
 
-// Fetch loan payments total
-$stmt = $pdo->prepare("SELECT SUM(amount) AS total_loan_payment FROM loan_payed WHERE member_id = ?");
+$stmt = $pdo->prepare("SELECT SUM(amount) AS total_loan_payment FROM loan_paid WHERE loanp_id = ?");
 $stmt->execute([$member['member_id']]);
-$loan_payed = $stmt->fetch();
-
-// Calculate sinking fund balance
+$loan_paid = $stmt->fetch();// Calculate sinking fund balance
 $total_contribution = $contribution['total_contribution'] ?? 0;
 $total_loan = $loan['total_loan'] ?? 0;
-$total_loan_payment = $loan_payed['total_loan_payment'] ?? 0;
+$total_loan_payment = $loan_paid['total_loan_payment'] ?? 0;
 $sinking_fund_balance = $total_contribution - $total_loan + $total_loan_payment;
 
-// Calculate yearly goal (example: 20% more than current total contribution)
+// Calculate yearly goal
 $yearly_goal = $total_contribution * 1.2;
 
 // Calculate loan balance
@@ -61,18 +54,6 @@ $monthly_interest = $loan_balance * 0.05;
             padding: 0;
             background-color: #ffffff;
             color: #000000;
-        }
-
-        .sidebar {
-            width: 250px;
-            background: linear-gradient(180deg, #e4effa, #ffffff);
-            color: #12293f;
-            padding: 20px;
-            height: 100vh;
-            position: fixed;
-            top: 0;
-            left: 0;
-            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
         }
 
         .sidebar {
@@ -169,22 +150,22 @@ $monthly_interest = $loan_balance * 0.05;
 </head>
 <body>
     <div class="sidebar">
-        <a class="navbar-brand brandname" href="admin_dash.php">
+        <a class="brandname" href="member_dash.php">
             <img src="images/logo.png" alt="" width="35" height="35"> Sinking Fund
         </a>
-        <a href="admin_dash.php">
+        <a href="member_dash.php">
             <i class="fas fa-tachometer-alt"></i> Dashboard
         </a>
-        <a href="admin_profile.php">
+        <a href="member_profile.php">
             <i class="fas fa-user"></i> Personal Info
         </a>
-        <a href="admin_history.php">
+        <a href="member_history.php">
             <i class="fas fa-history"></i> History
         </a>
-        <a href="admin_contribution_tracker.php">
+        <a href="member_contribution_tracker.php">
             <i class="fas fa-chart-line"></i> Contribution Tracker
         </a>
-        <a href="logout.php" class="btn button" id="logout">
+        <a href="login.php" class="btn button" id="logout">
             <i class="fas fa-sign-out-alt"></i> Logout
         </a>
     </div>

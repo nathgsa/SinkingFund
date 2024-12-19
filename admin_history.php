@@ -15,20 +15,23 @@ $stmt = $pdo->prepare("SELECT * FROM member WHERE user_id = ?");
 $stmt->execute([$user_id]);
 $member = $stmt->fetch();
 
-// Fetch contribution total
-$stmt = $pdo->prepare("SELECT SUM(amount) AS total_contribution FROM contributions WHERE member_id = ?");
+// Fetch contributions from the view
+$stmt = $pdo->prepare("SELECT CONCAT(UCASE(c.lastname), ', ', UCASE(c.firstname)) AS fullname, c.amount, c.date 
+                       FROM vw_hcontr c WHERE c.member_id = ?");
 $stmt->execute([$member['member_id']]);
-$contribution = $stmt->fetch();
+$contributions = $stmt->fetchAll();
 
-// Fetch loan total
-$stmt = $pdo->prepare("SELECT SUM(amount) AS total_loan FROM loans WHERE member_id = ?");
+// Fetch loans from the view
+$stmt = $pdo->prepare("SELECT CONCAT(UCASE(l.lastname), ', ', UCASE(l.firstname)) AS fullname, l.amount, l.date
+                       FROM vw_hloan l WHERE l.member_id = ?");
 $stmt->execute([$member['member_id']]);
-$loan = $stmt->fetch();
+$loans = $stmt->fetchAll();
 
-// Fetch loan payments total
-$stmt = $pdo->prepare("SELECT SUM(amount) AS total_loan_payment FROM loan_payed WHERE member_id = ?");
+// Fetch loan payments from the view
+$stmt = $pdo->prepare("SELECT CONCAT(UCASE(lp.lastname), ', ', UCASE(lp.firstname)) AS fullname, lp.amount, lp.date
+                       FROM vw_hloanp lp WHERE lp.member_id = ?");
 $stmt->execute([$member['member_id']]);
-$loan_payed = $stmt->fetch();
+$loan_payments = $stmt->fetchAll();
 ?>
 
 <!DOCTYPE html>
@@ -125,7 +128,6 @@ $loan_payed = $stmt->fetch();
             display: flex;
             justify-content: space-between;
             align-items: center;
-
         }
     </style>
 </head>
@@ -143,10 +145,7 @@ $loan_payed = $stmt->fetch();
         <a href="admin_history.php">
             <i class="fas fa-history"></i> History
         </a>
-        <a href="admin_contribution_tracker.php">
-            <i class="fas fa-chart-line"></i> Contribution Tracker
-        </a>
-        <a href="logout.php" class="btn button" id="logout">
+        <a href="login.php" class="btn button" id="logout">
             <i class="fas fa-sign-out-alt"></i> Logout
         </a>
     </div>
@@ -160,17 +159,32 @@ $loan_payed = $stmt->fetch();
 
         <div class="contribution">
             <h3>Contributions</h3>
-            <p><strong>Total Contributions:</strong> ₱<?php echo number_format($contribution['total_contribution'] ?? 0, 2); ?></p>
+            <?php foreach ($contributions as $contribution): ?>
+                <p><strong>Name:</strong> <?php echo htmlspecialchars($contribution['fullname']); ?></p>
+                <p><strong>Amount:</strong> ₱<?php echo number_format($contribution['amount'], 2); ?></p>
+                <p><strong>Date:</strong> <?php echo htmlspecialchars($contribution['date']); ?></p>
+                <hr>
+            <?php endforeach; ?>
         </div>
 
         <div class="loan">
             <h3>Loans</h3>
-            <p><strong>Total Loans:</strong> ₱<?php echo number_format($loan['total_loan'] ?? 0, 2); ?></p>
+            <?php foreach ($loans as $loan): ?>
+                <p><strong>Name:</strong> <?php echo htmlspecialchars($loan['fullname']); ?></p>
+                <p><strong>Amount:</strong> ₱<?php echo number_format($loan['amount'], 2); ?></p>
+                <p><strong>Date:</strong> <?php echo htmlspecialchars($loan['date']); ?></p>
+                <hr>
+            <?php endforeach; ?>
         </div>
 
         <div class="loan-payment">
             <h3>Loan Payments</h3>
-            <p><strong>Total Loan Payments:</strong> ₱<?php echo number_format($loan_payed['total_loan_payment'] ?? 0, 2); ?></p>
+            <?php foreach ($loan_payments as $payment): ?>
+                <p><strong>Name:</strong> <?php echo htmlspecialchars($payment['fullname']); ?></p>
+                <p><strong>Amount:</strong> ₱<?php echo number_format($payment['amount'], 2); ?></p>
+                <p><strong>Date:</strong> <?php echo htmlspecialchars($payment['date']); ?></p>
+                <hr>
+            <?php endforeach; ?>
         </div>
     </div>
 
