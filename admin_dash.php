@@ -7,65 +7,60 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     exit();
 }
 
-// Fetch members
+if (isset($_GET['delete'])) {
+    $member_id = $_GET['delete'];
+
+    if (empty($member_id)) {
+        die("No member ID provided for deletion.");
+    }
+
+    try {
+        $pdo->beginTransaction();
+
+        $query = $pdo->prepare("CALL delete_member_user(?)");
+        $query->execute([$member_id]);
+
+        $pdo->commit();
+        header('Location: admin_dash.php');
+        exit();
+    } catch (Exception $e) {
+        $pdo->rollBack();
+        echo "Error deleting member and user: " . $e->getMessage();
+    }
+}
+
 $stmt = $pdo->query("SELECT member_id, firstname, lastname, email FROM member");
 $members = $stmt->fetchAll();
 
-// Fetch loans
 $stmt = $pdo->query("SELECT loan_id, member_id, amount FROM loan");
 $loans = $stmt->fetchAll();
 
-// Fetch loan applications
 $stmt = $pdo->query("SELECT loanAppli_id, member_id, amount FROM loan_application");
 $loan_applications = $stmt->fetchAll();
 
-// Handle delete actions
-if (isset($_GET['delete_member'])) {
-    $member_id = $_GET['delete_member'];
-    $stmt = $pdo->prepare("CALL delete_member(?)");
-    $stmt->execute([$member_id]);
-    header("Location: admin_dash.php");
-    exit();
-}
-
-if (isset($_GET['delete_loan'])) {
-    $loan_id = $_GET['delete_loan'];
-    $stmt = $pdo->prepare("CALL DeleteLoan(?)");
-    $stmt->execute([$loan_id]);
-    header("Location: admin_dash.php");
-    exit();
-}
-
-// Handle loan application actions: Accept or Decline
 if (isset($_GET['action']) && isset($_GET['loan_id'])) {
     $loan_id = $_GET['loan_id'];
     $action = $_GET['action'];
 
     if ($action == 'accept') {
-        // Accept the loan application: Move it to the loans table
         $stmt = $pdo->prepare("SELECT * FROM loan_application WHERE loanAppli_id = ?");
         $stmt->execute([$loan_id]);
         $loan_application = $stmt->fetch();
 
         if ($loan_application) {
-            // Insert the accepted loan into the loans table
             $insert_stmt = $pdo->prepare("INSERT INTO loan (member_id, amount) VALUES (?, ?)");
             $insert_stmt->execute([$loan_application['member_id'], $loan_application['amount']]);
-            
-            // Delete the application from the loan applications table
+
             $delete_stmt = $pdo->prepare("DELETE FROM loan_application WHERE loanAppli_id = ?");
             $delete_stmt->execute([$loan_id]);
 
-            // Redirect to avoid resubmission
             header("Location: admin_dash.php");
             exit();
         }
     } elseif ($action == 'decline') {
-        // Decline the loan application: Remove from loan applications table
         $delete_stmt = $pdo->prepare("DELETE FROM loan_application WHERE loanAppli_id = ?");
         $delete_stmt->execute([$loan_id]);
 
-        // Redirect to avoid resubmission
         header("Location: admin_dash.php");
         exit();
     }
@@ -227,7 +222,7 @@ if (isset($_GET['action']) && isset($_GET['loan_id'])) {
                         <td><?= htmlspecialchars($member['email']) ?></td>
                         <td>
                             <a href="view_member.php?member_id=<?= $member['member_id'] ?>" class="btn btn-edit">View</a>
-                            <a href="?delete_member=<?= $member['member_id'] ?>" class="btn btn-delete" onclick="return confirm('Are you sure you want to delete this member?');">Delete</a>
+                            <a href="?delete=<?php echo $row['user_id']; ?>" class="btn btn-delete" onclick="return confirm('Are you sure you want to delete this member?');">Delete</a>
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -249,7 +244,7 @@ if (isset($_GET['action']) && isset($_GET['loan_id'])) {
                         <td><?= htmlspecialchars($loan['member_id']) ?></td>
                         <td><?= htmlspecialchars($loan['amount']) ?></td>
                         <td>
-                            <a href="edit_loan.php?loan_id=<?= $loan['loan_id'] ?>" class="btn btn-edit">View</a>
+                            <a href="view_loan.php?loan_id=<?= $loan['loan_id'] ?>" class="btn btn-edit">View</a>
                             <a href="?delete_loan=<?= $loan['loan_id'] ?>" class="btn btn-delete" onclick="return confirm('Are you sure you want to delete this loan?');">Delete</a>
                         </td>
                     </tr>

@@ -13,31 +13,27 @@ $stmt = $pdo->prepare("SELECT * FROM member WHERE user_id = ?");
 $stmt->execute([$user_id]);
 $member = $stmt->fetch();
 
-// submissions
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    if (isset($_POST['contribution'])) {
-        $amount = $_POST['amount'];
-        $gcash_number = $_POST['gcash_number'];
+$stmt = $pdo->prepare("SELECT SUM(amount) AS total_contribution FROM contribution WHERE member_id = ?");
+$stmt->execute([$member['member_id']]);
+$contribution = $stmt->fetch();
 
-        $stmt = $pdo->prepare("CALL SaveContribution(?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$member['member_id'], $member['firstname'], $member['lastname'], date('Y-m-d'), $gcash_number, $amount]);
-    } elseif (isset($_POST['loan_application'])) {
-        $amount = $_POST['amount'];
-        $gcash_number = $_POST['gcash_number'];
+$stmt = $pdo->prepare("SELECT SUM(amount) AS total_loan FROM loan WHERE member_id = ?");
+$stmt->execute([$member['member_id']]);
+$loan = $stmt->fetch();
 
-        $stmt = $pdo->prepare("INSERT INTO loan_application (member_id, amount, gcash_number, date) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$member['member_id'], $amount, $gcash_number, date('Y-m-d')]);
-    } elseif (isset($_POST['loan_payment'])) {
-        $amount = $_POST['amount'];
-        $gcash_number = $_POST['gcash_number'];
+$stmt = $pdo->prepare("SELECT SUM(amount) AS total_loan_payment FROM loan_paid WHERE loanp_id = ?");
+$stmt->execute([$member['member_id']]);
+$loan_paid = $stmt->fetch();
+$total_contribution = $contribution['total_contribution'] ?? 0;
+$total_loan = $loan['total_loan'] ?? 0;
+$total_loan_payment = $loan_paid['total_loan_payment'] ?? 0;
+$sinking_fund_balance = $total_contribution - $total_loan + $total_loan_payment;
 
-        $stmt = $pdo->prepare("INSERT INTO loan_paid (loan_id, amount, gcash_number, date) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$member['member_id'], $amount, $gcash_number, date('Y-m-d')]);
-    }
+$yearly_goal = $total_contribution * 1.2;
 
-    header("Location: member_dash.php");
-    exit();
-}
+$loan_balance = $total_loan - $total_loan_payment;
+
+$monthly_interest = $loan_balance * 0.05;
 ?>
 
 <!DOCTYPE html>
@@ -47,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-    <title>Member Dashboard</title>
+    <title>Contribution Tracker</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -116,22 +112,30 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             margin-right: 10px;
         }
 
-        .profile_info {
-            background-color: #f8f9fa;
+        .card {
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             padding: 20px;
-            border-radius: 5px;
             margin-bottom: 20px;
         }
 
-        #inner-content {
-            background-color: #ffffff;
-            padding: 20px;
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        .card h2 {
+            color: #12293f;
+            margin-bottom: 15px;
         }
 
-        .btn-contribution, .btn-loan-application, .btn-loan-payment {
-            margin-right: 10px;
+        .card p {
+            font-size: 20px;
+        }
+
+        .progress {
+            height: 20px;
+            margin-bottom: 10px;
+        }
+
+        .progress-bar {
+            background-color: #12293f;
         }
 
         .brandname {
@@ -141,12 +145,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             display: flex;
             justify-content: space-between;
             align-items: center;
+
         }
     </style>
 </head>
 <body>
-
     <div class="sidebar">
+        <a class="brandname" href="member_dash.php">
+            <img src="images/logo.png" alt="" width="35" height="35"> Sinking Fund
+        </a>
         <a href="member_dash.php">
             <i class="fas fa-tachometer-alt"></i> Dashboard
         </a>
@@ -165,114 +172,59 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     </div>
 
     <div class="container">
-        <div class="profile_info text-center">
-            <p><strong>Name:</strong> <?php echo htmlspecialchars($member['firstname'] . ' ' . $member['lastname']); ?></p>
-            <p><strong>Email:</strong> <?php echo htmlspecialchars($member['email']); ?></p>
+        <h1 class="mb-4">Contribution Tracker</h1>
+
+        <div class="card">
+            <h2>Sinking Fund Balance</h2>
+            <h3 id="sinking-fund-balance">₱<?php echo number_format($sinking_fund_balance, 2); ?></h3>
+            <div class="progress">
+                <div class="progress-bar" role="progressbar" style="width: <?php echo min(($sinking_fund_balance / $yearly_goal) * 100, 100); ?>%" aria-valuenow="<?php echo $sinking_fund_balance; ?>" aria-valuemin="0" aria-valuemax="<?php echo $yearly_goal; ?>"></div>
+            </div>
+            <p>Yearly Goal: ₱<?php echo number_format($yearly_goal, 2); ?></p>
         </div>
 
-        <div id="inner-content">
-            <div class="d-flex justify-content-around mb-4">
-                <button class="btn btn-contribution" id="btn-contribution">
-                    <i class="fas fa-hand-holding-usd"></i> Contribution
-                </button>
-                <button class="btn btn-loan-application" id="btn-loan-application">
-                    <i class="fas fa-money-bill"></i> Loan Application
-                </button>
-                <button class="btn btn-loan-payment" id="btn-loan-payment">
-                    <i class="fas fa-money-check-alt"></i> Loan Payment
-                </button>
-            </div>
+        <div class="card">
+            <h2>Contributions</h2>
+            <p>Total Contributions: ₱<span id="total-contributions"><?php echo number_format($total_contribution, 2); ?></span></p>
+        </div>
 
-            <div id="dynamic-content"></div>
+        <div class="card">
+            <h2>Loans<h2>
+            <p>Total Loans: ₱<span id="total-loans"><?php echo number_format($total_loan, 2); ?></span></p>
+            <p>Loan Balance: <span id="loan-balance"><?php echo number_format($loan_balance, 2); ?></span></p>
+            <p>Total Loan Payments: ₱<span id="total-loan-payments"><?php echo number_format($total_loan_payment, 2); ?></span></p>
+        </div>
+
+        <div class="card">
+            <h2>Monthly Interest</h2>
+            <p>Current Monthly Interest (5%): ₱<span id="monthly-interest"><?php echo number_format($monthly_interest, 2); ?></span></p>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
-
     <script>
-        const dynamicContent = document.getElementById('dynamic-content');
+        function updateSinkingFundBalance() {
+            const totalContributions = parseFloat(document.getElementById('total-contributions').textContent.replace(',', ''));
+            const totalLoans = parseFloat(document.getElementById('total-loans').textContent.replace(',', ''));
+            const totalLoanPayments = parseFloat(document.getElementById('total-loan-payments').textContent.replace(',', ''));
+            
+            const sinkingFundBalance = totalContributions - totalLoans + totalLoanPayments;
+            document.getElementById('sinking-fund-balance').textContent = '₱' + sinkingFundBalance.toFixed(2);
+            
+            const loanBalance = totalLoans - totalLoanPayments;
+            document.getElementById('loan-balance').textContent = '₱' + loanBalance.toFixed(2);
+            
+            const monthlyInterest = loanBalance * 0.05;
+            document.getElementById('monthly-interest').textContent = '₱' + monthlyInterest.toFixed(2);
+            
+            const yearlyGoal = <?php echo $yearly_goal; ?>;
+            const progressBar = document.querySelector('.progress-bar');
+            const progressPercentage = Math.min((sinkingFundBalance / yearlyGoal) * 100, 100);
+            progressBar.style.width = progressPercentage + '%';
+            progressBar.setAttribute('aria-valuenow', sinkingFundBalance);
+        }
 
-        document.getElementById('btn-contribution').addEventListener('click', () => {
-            dynamicContent.innerHTML = ` 
-                <h3>Contribution</h3>
-                <form action="member_dash.php" method="post">
-                    <input type="hidden" name="contribution" value="1">
-                    <div class="mb-3">
-                        <label for="contribution-name" class="form-label">Name</label>
-                        <input type="text" class="form-control" id="contribution-name" value="<?php echo htmlspecialchars($member['firstname'] . ' ' . $member['lastname']); ?>" readonly required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="contribution-date" class="form-label">Date</label>
-                        <input type="text" class="form-control" id="contribution-date" value="<?php echo date('Y-m-d H:i:s'); ?>" readonly>
-                    </div>
-                    <div class="mb-3">
-                        <label for="contribution-gcash" class="form-label">G-Cash Number</label>
-                        <input type="text" class="form-control" id="contribution-gcash" name="gcash_number" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="contribution-amount" class="form-label">Amount</label>
-                        <input type="number" class="form-control" id="contribution-amount" name="amount" required>
-                    </div>
-                    <button type="submit" class="btn button">Pay</button>
-                </form>
-            `;
-        });
-
-        document.getElementById('btn-loan-application').addEventListener('click', () => {
-            dynamicContent.innerHTML = `
-                <h3>Loan Application</h3>
-                <form action="member_dash.php" method="post">
-                    <input type="hidden" name="loan_application" value="1">
-                    <div class="mb-3">
-                        <label for="loan-application-name" class="form-label">Name</label>
-                        <input type="text" class="form-control" id="loan-application-name" value="<?php echo htmlspecialchars($member['firstname'] . ' ' . $member['lastname']); ?>" readonly required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="loan-application-date" class="form-label">Date</label>
-                        <input type="text" class="form-control" id="loan-application-date" value="<?php echo date('Y-m-d H:i:s'); ?>" readonly>
-                    </div>
-                    <div class="mb-3">
-                        <label for="loan-application-gcash" class="form-label">G-Cash Number</label>
-                        <input type="text" class="form-control" id="loan-application-gcash" name="gcash_number" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="loan-application-amount" class="form-label">Amount</label>
-                        <input type="number" class="form-control" id="loan-application-amount" name="amount" required>
-                    </div>
-                    <button type="submit" class="btn button">Apply</button>
-                </form>
-            `;
-        });
-
-        document.getElementById('btn-loan-payment').addEventListener('click', () => {
-            dynamicContent.innerHTML = `
-                <h3>Loan Payment</h3>
-                <form action="member_dash.php" method="post">
-                    <input type="hidden" name="loan_payment" value="1">
-                    <div class="mb-3">
-                        <label for="loan-payment-id" class="form-label">Loan ID</label>
-                        <input type="text" class="form-control" id="loan-payment-name" value="${loanId}" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="loan-payment-name" class="form-label">Name</label>
-                        <input type="text" class="form-control" id="loan-payment-name" value="<?php echo htmlspecialchars($member['firstname'] . ' ' . $member['lastname']); ?>" readonly required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="loan-payment-date" class="form-label">Date</label>
-                        <input type="text" class="form-control" id="loan-payment-date" value="<?php echo date('Y-m-d H:i:s'); ?>" readonly>
-                    </div>
-                    <div class="mb-3">
-                        <label for="loan-payment-gcash" class="form-label">G-Cash Number</label>
-                        <input type="text" class="form-control" id="loan-payment-gcash" name="gcash_number" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="loan-payment-amount" class="form-label">Amount</label>
-                        <input type="number" class="form-control" id="loan-payment-amount" name="amount" required>
-                    </div>
-                    <button type="submit" class="btn button">Pay</button>
-                </form>
-            `;
-        });
+        updateSinkingFundBalance();
     </script>
 </body>
 </html>

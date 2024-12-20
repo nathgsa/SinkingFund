@@ -2,7 +2,6 @@
 session_start();
 require_once 'db_connection.php';
 
-// Check if user is logged in and is a member
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'member') {
     header("Location: login.php");
     exit();
@@ -10,12 +9,10 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'member') {
 
 $user_id = $_SESSION['user_id'];
 
-// Fetch member details
 $stmt = $pdo->prepare("SELECT * FROM member WHERE user_id = ?");
 $stmt->execute([$user_id]);
 $member = $stmt->fetch();
 
-// Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['contribution'])) {
         $amount = $_POST['amount'];
@@ -28,13 +25,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $gcash_number = $_POST['gcash_number'];
 
         $stmt = $pdo->prepare("INSERT INTO loan_application (member_id, amount, gcash_number, date) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$member['member_id'], $amount, $gcash_number, date('Y-m-d')]);
+        $stmt->execute([$member['member_id'], $member['firstname'], $member['lastname'], date('Y-m-d'), $gcash_number, $amount]);
     } elseif (isset($_POST['loan_payment'])) {
-        $loan_id = $_POST['loan_id']; // Ensure this is provided in your form
+        $loanp_id = $_POST['loanp_id'];
         $amount = $_POST['amount'];
         $gcash_number = $_POST['gcash_number'];
 
-        // Call the stored procedure
         $stmt = $pdo->prepare("CALL saveLoanPaid(?, ?, ?, ?, ?, ?)");
         $stmt->execute([$loan_id, $member['firstname'], $member['lastname'], date('Y-m-d'), $gcash_number, $amount]);
     }
@@ -211,11 +207,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     </div>
                     <div class="mb-3">
                         <label for="contribution-gcash" class="form-label">G-Cash Number</label>
-                        <input type="text" class="form-control" id="contribution-gcash" name="gcash_number" required>
+                        <input type="text" class="form-control" id="contribution-gcash" name="gcash_number" required oninput="removeSpaces('gcash_number)>
                     </div>
                     <div class="mb-3">
                         <label for="contribution-amount" class="form-label">Amount</label>
-                        <input type="number" class="form-control" id="contribution-amount" name="amount" required>
+                        <input type="number" class="form-control" id="contribution-amount" name="amount" required oninput="removeSpaces('amount)>
                     </div>
                     <button type="submit" class="btn button">Pay</button>
                 </form>
@@ -237,11 +233,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     </div>
                     <div class="mb-3">
                         <label for="loan-application-gcash" class="form-label">G-Cash Number</label>
-                        <input type="text" class="form-control" name="gcash_number" required>
+                        <input type="text" class="form-control" name="gcash_number" required oninput="removeSpaces('gcash_number)>
                     </div>
                     <div class="mb-3">
                         <label for="loan-application-amount" class="form-label">Amount</label>
-                        <input type="number" class="form-control" name="amount" required>
+                        <input type="number" class="form-control" name="amount" required oninput="removeSpaces('amount)>
                     </div>
                     <button type="submit" class="btn button">Apply</button>
                 </form>
@@ -254,10 +250,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 <form action="member_dash.php" method="post">
                     <input type="hidden" name="loan_payment" value="1">
                     <div class="mb-3">
-                        <label for="loan-payment-name" class="form-label">Loan ID</label>
-                        <input type="text" class="form-control" value="${'<?php echo $loan['loan_id']; ?>'}" readonly required>
-                    </div>
-                    <div class="mb-3">
                         <label for="loan-payment-name" class="form-label">Name</label>
                         <input type="text" class="form-control" value="${'<?php echo $member['firstname'].' '.$member['lastname']; ?>'}" readonly required>
                     </div>
@@ -267,16 +259,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     </div>
                     <div class="mb-3">
                         <label for="loan-payment-gcash" class="form-label">G-Cash Number</label>
-                        <input type="text" class="form-control" name="gcash_number" required>
+                        <input type="text" class="form-control" name="gcash_number" required oninput="removeSpaces('gcash_number)>
                     </div>
                     <div class="mb-3">
                         <label for="loan-payment-amount" class="form-label">Amount</label>
-                        <input type="number" class="form-control" name="amount" required>
+                        <input type="number" class="form-control" name="amount" required oninput="removeSpaces('amount)>
                     </div>
                     <button type="submit" class="btn button">Pay</button>
                 </form>
             `;
         });
+
+        function removeSpaces(inputId) {
+            var inputField = document.getElementById(inputId);
+            inputField.value = inputField.value.replace(/^\s+|\s+$/g, '').replace(/\s{2,}/g, ' ');
+        }
     </script>
 </body>
 </html>

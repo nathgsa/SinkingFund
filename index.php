@@ -15,61 +15,37 @@ include 'db_connection.php';
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
-            background-color: #e4effa;
+            background: linear-gradient(to bottom, #e4effa, #ffffff);
             color: #12293f;
         }
-
         nav {
-            background-color: #e4effa;
+            background-color: transparent;
             color: white;
             padding: 1em;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-
         nav ul {
             list-style: none;
             margin: 0;
             padding: 0;
             display: flex;
         }
-
         nav ul li {
             margin-left: 20px;
         }
-
         nav ul li a {
             color: white;
             text-decoration: none;
             font-weight: bold;
         }
-
-        .navbar{
+        .navbar {
             position: fixed;
             top: 0;
             width: 100%;
             z-index: 1000;
         }
-
-        .button {
-            background-color: #12293f;
-            color: white;
-            padding: 9px 20px;
-            border-radius: 5px;
-            text-decoration: none;
-            width: 75px;
-            height: 30;
-        }
-
-        .button.outline {
-            background-color: transparent;
-            color: #12293f;
-            border: 3px solid #12293f;
-            width: 75px;
-            height: 45px;
-        }
-
         header {
             text-align: center;
             padding: 100px 20px 50px;
@@ -77,7 +53,6 @@ include 'db_connection.php';
             color: #12293f;
             border-bottom: 10px solid #e4effa;
         }
-
         header h1 {
             font-size: 2.5em;
             margin-bottom: 10px;
@@ -86,19 +61,44 @@ include 'db_connection.php';
             font-style: italic;
             margin-bottom: 20px;
         }
-
         .brandname {
-            font-size: 20px;
+            font-size: 1.5rem;
         }
-
         .fst-italic {
-            font-size: 25px;
+            font-size: 1.25rem;
         }
-
+        .btn-lg {
+            font-size: 1.2rem;
+            padding: 0.75rem 1.5rem;
+        }
         h1 {
-            font-size: 50px;
+            font-size: 2.5rem;
         }
-
+        p {
+            font-size: 1rem;
+        }
+        @media (min-width: 768px) {
+            header h1 {
+                font-size: 3rem;
+            }
+            header p {
+                font-size: 1.25rem;
+            }
+            .btn-lg {
+                font-size: 1.5rem;
+            }
+        }
+        @media (min-width: 1200px) {
+            header h1 {
+                font-size: 4rem;
+            }
+            header p {
+                font-size: 1.5rem;
+            }
+        }
+        .container {
+            max-width: 1200px;
+        }
     </style>
 </head>
 <body>

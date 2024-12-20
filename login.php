@@ -1,6 +1,6 @@
 <?php
 session_start();
-include 'db_connection.php';  // Ensure this file sets up the $pdo connection properly
+include 'db_connection.php';
 
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
@@ -13,12 +13,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $error = "Username and Password cannot be empty.";
     } else {
         try {
-            // Prepare the query using PDO
             $query = $pdo->prepare("SELECT * FROM user WHERE username = :username");
             $query->bindParam(':username', $username, PDO::PARAM_STR);
             $query->execute();
 
-            // Check if a user was found
             if ($query->rowCount() > 0) {
                 $user = $query->fetch(PDO::FETCH_ASSOC);
 
@@ -182,7 +180,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         </div>
     </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function removeSpaces(inputId) {
+            var inputField = document.getElementById(inputId);
+            inputField.value = inputField.value.replace(/^\s+|\s+$/g, '').replace(/\s{2,}/g, ' ');
+        }
+    </script>
 
 </body>
 </html>

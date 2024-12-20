@@ -2,28 +2,29 @@
 session_start();
 require_once 'db_connection.php';
 
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'member') {
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header("Location: login.php");
     exit();
 }
 
-$user_id = $_SESSION['user_id'];
+    $user_id = $_SESSION['user_id'];
 
-// Fetch members
-$stmt = $pdo->query("SELECT member_id, firstname, lastname FROM member");
-$members = $stmt->fetchAll();
+    $stmt = $pdo->prepare("SELECT * FROM member WHERE user_id = ?");
+    $stmt->execute([$user_id]);
+    $member = $stmt->fetch();
 
-// Fetch contribution
-$stmt = $pdo->query("SELECT contribution_id, member_id, amount, b_date FROM contribution");
-$loans = $stmt->fetchAll();
+    $stmt = $pdo->prepare("SELECT fullname, amount, date FROM vw_hcontr WHERE member_id = ?");
+    $stmt->execute([$member['member_id']]);
+    $contributions = $stmt->fetchAll();
 
-// Fetch loans
-$stmt = $pdo->query("SELECT loan_id, member_id, amount, b_date FROM loan");
-$loans = $stmt->fetchAll();
+    $stmt = $pdo->prepare("SELECT fullname, amount, date FROM vw_hloan WHERE member_id = ?");
+    $stmt->execute([$member['member_id']]);
+    $loans = $stmt->fetchAll();
 
-// Fetch loan paid
-$stmt = $pdo->query("SELECT loanp_id, loan_id, amount, b_date FROM loan_paid");
-$loans = $stmt->fetchAll();
+    $stmt = $pdo->prepare("SELECT fullname, amount, date FROM vw_hloanp WHERE member_id = ?");
+    $stmt->execute([$member['member_id']]);
+    $loan_paid = $stmt->fetchAll();
+
 
 ?>
 
@@ -33,10 +34,10 @@ $loans = $stmt->fetchAll();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <title>Member Dashboard</title>
-</head>
-<style>
-    body {
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <title>History</title>
+    <style>
+        body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
@@ -122,70 +123,59 @@ $loans = $stmt->fetchAll();
             justify-content: space-between;
             align-items: center;
         }
-</style>
+    </style>
+</head>
 <body>
-    <div class="container">
-        <h2>Member Dashboard</h2>
-
-        <h3>Contributions</h3>
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Amount</th>
-                    <th>Date</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($contribution as $contributions): ?>
-                    <tr>
-                        <td><?= htmlspecialchars($contribution['fullname']) ?></td>
-                        <td><?= htmlspecialchars($contribution['amount']) ?></td>
-                        <td><?= htmlspecialchars($contribution['date']) ?></td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-
-        <h3>Loans</h3>
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Amount</th>
-                    <th>Date</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($loan as $loans): ?>
-                    <tr>
-                        <td><?= htmlspecialchars($loan['fullname']) ?></td>
-                        <td><?= htmlspecialchars($loan['amount']) ?></td>
-                        <td><?= htmlspecialchars($loan['date']) ?></td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-
-        <h3>Loan Payments</h3>
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Amount</th>
-                    <th>Date</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ($loan_payment as $loan_payments): ?>
-                    <tr>
-                        <td><?= htmlspecialchars($loan_payment['fullname']) ?></td>
-                        <td><?= htmlspecialchars($loan_payment['amount']) ?></td>
-                        <td><?= htmlspecialchars($loan_payment['date']) ?></td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+    <div class="sidebar">
+        <a class="navbar-brand brandname" href="admin_dash.php">
+            <img src="images/logo.png" alt="" width="35" height="35"> Sinking Fund
+        </a>
+        <a href="admin_dash.php">
+            <i class="fas fa-tachometer-alt"></i> Dashboard
+        </a>
+        <a href="admin_profile.php">
+            <i class="fas fa-user"></i> Personal Info
+        </a>
+        <a href="admin_history.php">
+            <i class="fas fa-history"></i> History
+        </a>
+        <a href="login.php" class="btn button" id="logout">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </a>
     </div>
+
+    <div class="container">
+        <div class="contribution">
+            <h3>Contributions</h3>
+            <?php foreach ($contributions as $contribution): ?>
+                <p><strong>Name:</strong> <?php echo htmlspecialchars($contribution['fullname']); ?></p>
+                <p><strong>Amount:</strong> ₱<?php echo number_format($contribution['amount'], 2); ?></p>
+                <p><strong>Date:</strong> <?php echo htmlspecialchars($contribution['date']); ?></p>
+                <hr>
+            <?php endforeach; ?>
+        </div>
+
+        <div class="loan">
+            <h3>Loans</h3>
+            <?php foreach ($loans as $loan): ?>
+                <p><strong>Name:</strong> <?php echo htmlspecialchars($loan['fullname']); ?></p>
+                <p><strong>Amount:</strong> ₱<?php echo number_format($loan['amount'], 2); ?></p>
+                <p><strong>Date:</strong> <?php echo htmlspecialchars($loan['date']); ?></p>
+                <hr>
+            <?php endforeach; ?>
+        </div>
+
+        <div class="loan-payment">
+            <h3>Loan Payments</h3>
+            <?php foreach ($loan_paid as $payment): ?>
+                <p><strong>Name:</strong> <?php echo htmlspecialchars($loan_paid['fullname']); ?></p>
+                <p><strong>Amount:</strong> ₱<?php echo number_format($loan_paid['amount'], 2); ?></p>
+                <p><strong>Date:</strong> <?php echo htmlspecialchars($loan_paid['date']); ?></p>
+                <hr>
+            <?php endforeach; ?>
+        </div>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

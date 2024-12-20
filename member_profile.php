@@ -2,7 +2,6 @@
 require_once 'db_connection.php';
 session_start();
 
-// Check if the user is a member
 if ($_SESSION['role'] !== 'member') {
     header("Location: login.php");
     exit();

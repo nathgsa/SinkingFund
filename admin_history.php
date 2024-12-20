@@ -2,36 +2,30 @@
 session_start();
 require_once 'db_connection.php';
 
-// Check if user is logged in and is an admin
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header("Location: login.php");
     exit();
 }
 
-$user_id = $_SESSION['user_id'];
+    $user_id = $_SESSION['user_id'];
 
-// Fetch member details
-$stmt = $pdo->prepare("SELECT * FROM member WHERE user_id = ?");
-$stmt->execute([$user_id]);
-$member = $stmt->fetch();
+    $stmt = $pdo->prepare("SELECT * FROM member WHERE user_id = ?");
+    $stmt->execute([$user_id]);
+    $member = $stmt->fetch();
 
-// Fetch contributions from the view
-$stmt = $pdo->prepare("SELECT CONCAT(UCASE(c.lastname), ', ', UCASE(c.firstname)) AS fullname, c.amount, c.date 
-                       FROM vw_hcontr c WHERE c.member_id = ?");
-$stmt->execute([$member['member_id']]);
-$contributions = $stmt->fetchAll();
+    $stmt = $pdo->prepare("SELECT fullname, amount, date FROM vw_hcontr WHERE member_id = ?");
+    $stmt->execute([$member['member_id']]);
+    $contributions = $stmt->fetchAll();
 
-// Fetch loans from the view
-$stmt = $pdo->prepare("SELECT CONCAT(UCASE(l.lastname), ', ', UCASE(l.firstname)) AS fullname, l.amount, l.date
-                       FROM vw_hloan l WHERE l.member_id = ?");
-$stmt->execute([$member['member_id']]);
-$loans = $stmt->fetchAll();
+    $stmt = $pdo->prepare("SELECT fullname, amount, date FROM vw_hloan WHERE member_id = ?");
+    $stmt->execute([$member['member_id']]);
+    $loans = $stmt->fetchAll();
 
-// Fetch loan payments from the view
-$stmt = $pdo->prepare("SELECT CONCAT(UCASE(lp.lastname), ', ', UCASE(lp.firstname)) AS fullname, lp.amount, lp.date
-                       FROM vw_hloanp lp WHERE lp.member_id = ?");
-$stmt->execute([$member['member_id']]);
-$loan_payments = $stmt->fetchAll();
+    $stmt = $pdo->prepare("SELECT fullname, amount, date FROM vw_hloanp WHERE member_id = ?");
+    $stmt->execute([$member['member_id']]);
+    $loan_paid = $stmt->fetchAll();
+
+
 ?>
 
 <!DOCTYPE html>
@@ -151,12 +145,6 @@ $loan_payments = $stmt->fetchAll();
     </div>
 
     <div class="container">
-        <div class="profile_info">
-            <h3>Profile Information</h3>
-            <p><strong>Name:</strong> <?php echo htmlspecialchars($member['firstname'] . ' ' . $member['lastname']); ?></p>
-            <p><strong>Email:</strong> <?php echo htmlspecialchars($member['email']); ?></p>
-        </div>
-
         <div class="contribution">
             <h3>Contributions</h3>
             <?php foreach ($contributions as $contribution): ?>
@@ -179,14 +167,14 @@ $loan_payments = $stmt->fetchAll();
 
         <div class="loan-payment">
             <h3>Loan Payments</h3>
-            <?php foreach ($loan_payments as $payment): ?>
-                <p><strong>Name:</strong> <?php echo htmlspecialchars($payment['fullname']); ?></p>
-                <p><strong>Amount:</strong> ₱<?php echo number_format($payment['amount'], 2); ?></p>
-                <p><strong>Date:</strong> <?php echo htmlspecialchars($payment['date']); ?></p>
+            <?php foreach ($loan_paid as $payment): ?>
+                <p><strong>Name:</strong> <?php echo htmlspecialchars($loan_paid['fullname']); ?></p>
+                <p><strong>Amount:</strong> ₱<?php echo number_format($loan_paid['amount'], 2); ?></p>
+                <p><strong>Date:</strong> <?php echo htmlspecialchars($loan_paid['date']); ?></p>
                 <hr>
             <?php endforeach; ?>
         </div>
-    </div>
+
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
 </body>

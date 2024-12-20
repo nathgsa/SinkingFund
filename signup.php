@@ -14,10 +14,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $role = $_POST['role'];
 
     try {
-        // Begin a transaction
         $pdo->beginTransaction();
 
-        // Insert into users table
         $user_query = $pdo->prepare("INSERT INTO user (username, password, role) VALUES (:username, :password, :role)");
         $user_query->bindParam(':username', $username);
         $user_query->bindParam(':password', $password);
@@ -53,12 +51,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $member_query->execute();
         }
         
-        // Commit the transaction
         $pdo->commit();
 
         echo "<p>Registration successful! <a href='login.php'>Login here</a>.</p>";
     } catch (Exception $e) {
-        // Rollback the transaction if any error occurs
         $pdo->rollBack();
         echo "<p>Error: " . $e->getMessage() . "</p>";
     }
@@ -196,11 +192,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     <form action="signup.php" method="post">
                         <div class="mb-3">
                             <label for="username" class="form-label">Username</label>
-                            <input type="text" class="form-control" id="username" name="username" required>
+                            <input type="text" class="form-control" id="username" name="username" oninput="removeSpaces('username')">
                         </div>
                         <div class="mb-3">
                             <label for="password" class="form-label">Password</label>
-                            <input type="password" class="form-control" id="password" name="password" required>
+                            <input type="password" class="form-control" id="password" name="password" oninput="removeSpaces('password')">
                         </div>
                         <div class="mb-3">
                             <label for="role" class="form-label">Role</label>
@@ -232,7 +228,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         </div>
                         <div class="mb-3">
                             <label for="address" class="form-label">Address</label>
-                            <textarea class="form-control" id="address" name="address" rows="2" required></textarea>
+                            <textarea class="form-control" id="address" name="address" rows="2" required oninput="removeSpaces"></textarea>
                         </div>
                         <div class="d-grid">
                             <button type="submit" class="btn btn-primary">Sign Up</button>
@@ -247,5 +243,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        function removeSpaces(inputId) {
+            var inputField = document.getElementById(inputId);
+            inputField.value = inputField.value.replace(/^\s+|\s+$/g, '');
+        }
+    </script>
 </body>
 </html>
